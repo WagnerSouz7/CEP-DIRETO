@@ -3,36 +3,62 @@ import './styles.css';
 import { useState } from "react";
 import api from "./services/api.jsx";
 
+// validando o tamanho do cep, para poder exibir o erro
+const validarCep = (cep) => /^[0-9]{5}-[0-9]{3}$/.test(cep);
+
 function App() {
   const [input, setInput] = useState('');  
   const [cepData, setCepData] = useState(null);  
   const [loading, setLoading] = useState(false);  
-  
+  const [error, setError] = useState(''); 
+
+  // permitindo apenas utilizar letras e -
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    const filteredValue = value.replace(/[^0-9-]/g, '');
+    setInput(filteredValue);
+  };
+
+ 
   async function handleSearch() {
     if (input === "") {
-      alert("Digite um Cep válido!");
+      alert("Digite um CEP válido!");
+      return;
+    }
+
+  
+    if (!validarCep(input)) {
+      setError("CEP inválido! Use o formato: 12345-678");
       return;
     }
 
     setLoading(true);  
+    setError('');  
 
+    //linkando c api
     try {
       const response = await api.get(`https://viacep.com.br/ws/${input}/json/`);
       
-      
       if (response.data.erro) {
-        alert("CEP não encontrado!");
+        setError("CEP não encontrado!");
         setCepData(null);  
       } else {
         setCepData(response.data);  
       }
     } catch (error) {
-      alert("Ops! Erro ao buscar.");
+      setError("Ops! Erro ao buscar.");
       setCepData(null);  
     } finally {
       setLoading(false);  
     }
   }
+
+  // ativando o botão enter, cod do botao =13
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
 
   return (
     <div className="Container">
@@ -43,9 +69,14 @@ function App() {
           type="text" 
           placeholder="Digite seu cep..." 
           value={input}
-          onChange={(e) => setInput(e.target.value)} 
+          onChange={handleInputChange}  //chama a função para usar apenas numeros e -
+          onKeyDown={handleKeyDown}  // ativa o enter para poder pesquisar
         />
-        <button className="buttonSearch" onClick={handleSearch}>
+        <button 
+          className="buttonSearch" 
+          onClick={handleSearch} 
+          disabled={loading}
+        >
           <FiSearch size={25} color="#000"/>
         </button>
       </div>
@@ -54,6 +85,7 @@ function App() {
         <p>Carregando...</p>  
       ) : (
         <main className="main">
+          {error && <p style={{ color: 'red' }}>{error}</p>}  {}
           {cepData ? (
             <>
               <h2 id="Text">CEP: {cepData.cep}</h2>
@@ -64,7 +96,7 @@ function App() {
               <span id="Text">Estado: {cepData.uf}</span>
             </>
           ) : (
-            <p id="Text">Nenhum resultado para exibir.</p>  
+            !error && <p id="Text">Nenhum resultado para exibir.</p>  
           )}
         </main>
       )}
